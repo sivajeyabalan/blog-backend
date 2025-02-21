@@ -1,36 +1,46 @@
 const { PrismaClient } = require("@prisma/client");
-const { connect } = require("../routes/profileRoute");
 const prisma = new PrismaClient();
 const multer = require("multer");
 const path = require("path");
- 
+const express = require("express");
+const app = express();
 const storage = multer.diskStorage({
-  destination : "./uploads",
+  destination: "./uploads",
   filename: (req, file, cb) => {
     cb(null, Date.now() + path.extname(file.originalname));
   },
-})
-const upload = multer({storage});
+});
+const upload = multer({ storage });
+
+app.use("/uploads", express.static("uploads"));
 exports.createPost = async (req, res) => {
-  upload.single("image");
-  try {
-    const { title, content, published } = req.body;
-    const userId = req.user.id;
-    const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
-    const post = await prisma.post.create({
-      data: {
-        title,
-        content,
-        published,
-        imageUrl,
+  upload.single("image")(req, res, async (err) => {
+    if (err) {
+      return res.status(500).json({ error: "Failed to upload image", details: err.message });
+    }
+
+    try {
+      const { title, content, published } = req.body;
+      const userId = req.user.id;
+      const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
+
+      const post = await prisma.post.create({
+        data: {
+          title,
+          content,
+          published: published === 'true', // Convert string to boolean
+          imageUrl,
           authorId: userId,
         },
-      }); 
-      res.json({ success: true, title, content, imageUrl });
+      });
+
+      res.json({ success: true, post });
     } catch (error) {
-      res.status(500).json({ error: "Failed to upload" });
+      console.error("Error creating post:", error);
+      res.status(500).json({ error: "Failed to create post", details: error.message });
     }
-  }; 
+  });
+};
 
 exports.getPosts = async (req, res) => {
   try {
