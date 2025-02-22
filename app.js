@@ -10,7 +10,8 @@ const authRoutes = require("./routes/authRoute"); // Import authRoutes
 const profileRoutes = require("./routes/profileRoute"); // Import userRoutes
 const postRoutes = require("./routes/postRoute"); // Import postRoutes
 const commentRoutes = require("./routes/commentRoute"); // Import commentRoutes
-const middleware = require("./middleware/authenication"); // Import middleware
+const middleware = require("./middleware/authenication"); 
+// Import middleware
 app.use("/api/auth", authRoutes); // Use authRoutes
 app.use("/api/posts", middleware, postRoutes); // Use postRoutes
 
