@@ -1,54 +1,78 @@
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
-const multer = require("multer");
-const path = require("path");
-const express = require("express");
-const app = express();
-const storage = multer.diskStorage({
-  destination: "./uploads",
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname));
-  },
-});
-const upload = multer({ storage });
 
-app.use("/uploads", express.static("uploads"));
 exports.createPost = async (req, res) => {
-  upload.single("image")(req, res, async (err) => {
-    if (err) {
-      return res.status(500).json({ error: "Failed to upload image", details: err.message });
-    }
+  try {
+    const { title, content, published } = req.body;
+    const userId = req.user.id;
+    const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
 
-    try {
-      const { title, content, published } = req.body;
-      const userId = req.user.id;
-      const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
+    const post = await prisma.post.create({
+      data: {
+        title,
+        content,
+        published: published == "true",
+        imageUrl,
+        authorId: userId,
+      },
+    });
 
-      const post = await prisma.post.create({
-        data: {
-          title,
-          content,
-          published: published === 'true', // Convert string to boolean
-          imageUrl,
-          authorId: userId,
-        },
-      });
-
-      res.json({ success: true, post });
-    } catch (error) {
-      console.error("Error creating post:", error);
-      res.status(500).json({ error: "Failed to create post", details: error.message });
-    }
-  });
+    res.json({ success: true, post });
+  } catch (error) {
+    console.error("Error creating post:", error);
+    res
+      .status(500)
+      .json({ error: "Failed to create post", details: error.message });
+  }
 };
 
 exports.getPosts = async (req, res) => {
   try {
     const posts = await prisma.post.findMany({
       where: { published: true },
-      include: { author: true, comments: true },
+      include: {
+        author: {
+          select: {
+            id: true,
+            email: true,
+          },
+        },
+        comments: {
+          include: {
+            author: {
+              select: {
+                id: true,
+                email: true,
+              },
+            },
+          },
+        },
+        likes: true,
+        _count: {
+          select: {
+            likes: true,
+            comments: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
     });
-    res.status(200).json(posts);
+
+    // Format the response to include readable dates
+    const formattedPosts = posts.map((post) => ({
+      ...post,
+      createdAt: post.createdAt.toISOString(),
+      updatedAt: post.updatedAt.toISOString(),
+      comments: post.comments.map((comment) => ({
+        ...comment,
+        createdAt: comment.createdAt.toISOString(),
+        updatedAt: comment.updatedAt.toISOString(),
+      })),
+    }));
+
+    res.status(200).json(formattedPosts);
   } catch (err) {
     res
       .status(500)
@@ -60,11 +84,50 @@ exports.getPostById = async (req, res) => {
   try {
     const { id } = req.params;
     const post = await prisma.post.findUnique({
-      where: { PostId: Number(id) },
-      include: { author: true },
+      where: { id: Number(id) },
+      include: {
+        author: {
+          select: {
+            id: true,
+            email: true,
+          },
+        },
+        comments: {
+          include: {
+            author: {
+              select: {
+                id: true,
+                email: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: "desc",
+          },
+        },
+        likes: true,
+        _count: {
+          select: {
+            likes: true,
+            comments: true,
+          },
+        },
+      },
     });
+
     if (post) {
-      res.status(200).json(post);
+      // Format the response to include readable dates
+      const formattedPost = {
+        ...post,
+        createdAt: post.createdAt.toISOString(),
+        updatedAt: post.updatedAt.toISOString(),
+        comments: post.comments.map((comment) => ({
+          ...comment,
+          createdAt: comment.createdAt.toISOString(),
+          updatedAt: comment.updatedAt.toISOString(),
+        })),
+      };
+      res.status(200).json(formattedPost);
     } else {
       res.status(404).json({ message: "Post not found" });
     }

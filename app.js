@@ -8,21 +8,29 @@ app.use("/uploads", express.static("uploads"));
 
 const authRoutes = require("./routes/authRoute"); // Import authRoutes
 const profileRoutes = require("./routes/profileRoute"); // Import userRoutes
-const postRoutes = require("./routes/postRoute"); // Import postRoutes
+const postRoutes = require("./routes/postRoutes"); // Import postRoutes
 const commentRoutes = require("./routes/commentRoute"); // Import commentRoutes
-const middleware = require("./middleware/authenication"); 
-// Import middleware
+
+// Routes
 app.use("/api/auth", authRoutes); // Use authRoutes
-app.use("/api/posts", middleware, postRoutes); // Use postRoutes
+app.use("/api/posts", postRoutes); // Use postRoutes
+app.use("/api/profile", profileRoutes); // Use userRoutes
+app.use("/api/comments", commentRoutes); // Use commentRoutes
 
-//tested
-
-app.use("/api/profile", middleware, profileRoutes); // Use userRoutes
-
-app.use("/api/comments", middleware, commentRoutes); // Use commentRoutes
-app.get('/' , (req , res) => {
-    res.send("hello sjb");
-})
-app.listen(8080, () => {
-  console.log(`Server is running on port 8080`);
+app.get("/", (req, res) => {
+  res.send("hello sjb");
 });
+
+const PORT = process.env.PORT || 8080;
+const server = app
+  .listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+  })
+  .on("error", (err) => {
+    if (err.code === "EADDRINUSE") {
+      console.log(`Port ${PORT} is busy, trying ${PORT + 1}`);
+      server.listen(PORT + 1);
+    } else {
+      console.error("Server error:", err);
+    }
+  });

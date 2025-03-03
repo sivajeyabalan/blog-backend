@@ -1,12 +1,12 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const profileController = require('../controllers/profileController');
-const authMiddleware = require('../middleware/authenication'); // Ensure user is authenticated
+const profileController = require("../controllers/profileController");
+const { authenticateToken } = require("../middleware/authenication");
 
 // Get profile
-router.get('/', authMiddleware, profileController.getProfile);
+router.get("/", authenticateToken, profileController.getProfile);
 
 // Update profile
-router.put('/', authMiddleware, profileController.updateProfile);
+router.put("/", authenticateToken, profileController.updateProfile);
 
 module.exports = router;
