@@ -194,3 +194,139 @@ exports.deletePost = async (req, res) => {
     res.status(500).json({ message: "Error deleted post", error: err.message });
   }
 };
+
+exports.getUserPosts = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const posts = await prisma.post.findMany({
+      where: { authorId: userId },
+      include: {
+        author: {
+          select: {
+            id: true,
+            email: true,
+          },
+        },
+        comments: {
+          include: {
+            author: {
+              select: {
+                id: true,
+                email: true,
+              },
+            },
+          },
+        },
+        likes: true,
+        _count: {
+          select: {
+            likes: true,
+            comments: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    // Format the response to include readable dates
+    const formattedPosts = posts.map((post) => ({
+      ...post,
+      createdAt: post.createdAt.toISOString(),
+      updatedAt: post.updatedAt.toISOString(),
+      comments: post.comments.map((comment) => ({
+        ...comment,
+        createdAt: comment.createdAt.toISOString(),
+        updatedAt: comment.updatedAt.toISOString(),
+      })),
+    }));
+
+    // Separate posts into published and unpublished
+    const response = {
+      published: formattedPosts.filter((post) => post.published),
+      unpublished: formattedPosts.filter((post) => !post.published),
+    };
+
+    res.status(200).json(response);
+  } catch (err) {
+    res
+      .status(500)
+      .json({ message: "Error retrieving user posts", error: err.message });
+  }
+};
+
+exports.publishPost = async (req, res) => {
+  try {
+    const { postId } = req.params;
+    const userId = req.user.id;
+
+    // Check if post exists and belongs to user
+    const post = await prisma.post.findUnique({
+      where: { id: Number(postId) },
+    });
+
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    if (post.authorId !== userId && req.user.role !== "ADMIN") {
+      return res
+        .status(403)
+        .json({ message: "You are not authorized to publish this post" });
+    }
+
+    // Update post to published
+    const updatedPost = await prisma.post.update({
+      where: { id: Number(postId) },
+      data: { published: true },
+      include: {
+        author: {
+          select: {
+            id: true,
+            email: true,
+          },
+        },
+        comments: {
+          include: {
+            author: {
+              select: {
+                id: true,
+                email: true,
+              },
+            },
+          },
+        },
+        likes: true,
+        _count: {
+          select: {
+            likes: true,
+            comments: true,
+          },
+        },
+      },
+    });
+
+    // Format the response
+    const formattedPost = {
+      ...updatedPost,
+      createdAt: updatedPost.createdAt.toISOString(),
+      updatedAt: updatedPost.updatedAt.toISOString(),
+      comments: updatedPost.comments.map((comment) => ({
+        ...comment,
+        createdAt: comment.createdAt.toISOString(),
+        updatedAt: comment.updatedAt.toISOString(),
+      })),
+    };
+
+    res.status(200).json({
+      message: "Post published successfully",
+      post: formattedPost,
+    });
+  } catch (err) {
+    res
+      .status(500)
+      .json({ message: "Error publishing post", error: err.message });
+  }
+};

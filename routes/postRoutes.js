@@ -18,6 +18,10 @@ router.get("/:id", postController.getPostById);
 router.put("/:id", authenticateToken, postController.updatePost);
 router.delete("/:id", authenticateToken, postController.deletePost);
 
+// New routes for user posts and publishing
+router.get("/user/posts", authenticateToken, postController.getUserPosts);
+router.patch("/:postId/publish", authenticateToken, postController.publishPost);
+
 // Like routes
 router.post("/:postId/like", authenticateToken, likeController.toggleLike);
 router.get("/:postId/likes/count", likeController.getLikeCount);
