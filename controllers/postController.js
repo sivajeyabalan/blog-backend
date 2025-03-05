@@ -330,3 +330,61 @@ exports.publishPost = async (req, res) => {
       .json({ message: "Error publishing post", error: err.message });
   }
 };
+
+exports.getFullPostDetails = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const post = await prisma.post.findUnique({
+      where: { id: Number(id) },
+      include: {
+        author: {
+          select: {
+            id: true,
+            email: true,
+          },
+        },
+        comments: {
+          include: {
+            author: {
+              select: {
+                id: true,
+                email: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: "desc",
+          },
+        },
+        likes: true,
+        _count: {
+          select: {
+            likes: true,
+            comments: true,
+          },
+        },
+      },
+    });
+
+    if (post) {
+      // Format the response to include readable dates
+      const formattedPost = {
+        ...post,
+        createdAt: post.createdAt.toISOString(),
+        updatedAt: post.updatedAt.toISOString(),
+        comments: post.comments.map((comment) => ({
+          ...comment,
+          createdAt: comment.createdAt.toISOString(),
+          updatedAt: comment.updatedAt.toISOString(),
+        })),
+      };
+      res.status(200).json(formattedPost);
+    } else {
+      res.status(404).json({ message: "Post not found" });
+    }
+  } catch (err) {
+    res
+      .status(500)
+      .json({ message: "Error retrieving post details", error: err.message });
+  }
+};

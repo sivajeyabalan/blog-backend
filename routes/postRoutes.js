@@ -45,4 +45,7 @@ router.delete(
   commentController.deleteComment
 );
 
+// New route for getting full post details
+router.get("/:id/full", postController.getFullPostDetails);
+
 module.exports = router;
