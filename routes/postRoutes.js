@@ -13,6 +13,8 @@ router.post(
   upload.single("image"),
   postController.createPost
 );
+// New route for fetching paginated posts with authentication
+router.get("/paginated", authenticateToken, postController.getPostsPaginated);
 router.get("/", postController.getPosts);
 router.get("/:id", postController.getPostById);
 router.put("/:id", authenticateToken, postController.updatePost);

@@ -83,8 +83,14 @@ exports.getPosts = async (req, res) => {
 exports.getPostById = async (req, res) => {
   try {
     const { id } = req.params;
+    const postId = parseInt(id, 10); // Convert id to an integer
+
+    if (isNaN(postId)) {
+      return res.status(400).json({ message: "Invalid post ID" });
+    }
+
     const post = await prisma.post.findUnique({
-      where: { id: Number(id) },
+      where: { id: postId },
       include: {
         author: {
           select: {
@@ -386,5 +392,74 @@ exports.getFullPostDetails = async (req, res) => {
     res
       .status(500)
       .json({ message: "Error retrieving post details", error: err.message });
+  }
+};
+
+exports.getPostsPaginated = async (req, res) => {
+  try {
+    const { page = 1, limit = 10 } = req.query; // Default to page 1 and limit 10
+    const skip = (page - 1) * limit;
+
+    // Count total number of posts
+    const totalPosts = await prisma.post.count();
+
+    // Calculate total pages
+    const totalPages = Math.ceil(totalPosts / limit);
+
+    const posts = await prisma.post.findMany({
+      skip: parseInt(skip),
+      take: parseInt(limit),
+      include: {
+        author: {
+          select: {
+            id: true,
+            email: true,
+          },
+        },
+        comments: {
+          include: {
+            author: {
+              select: {
+                id: true,
+                email: true,
+              },
+            },
+          },
+        },
+        likes: true,
+        _count: {
+          select: {
+            likes: true,
+            comments: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    // Format the response to include readable dates
+    const formattedPosts = posts.map((post) => ({
+      ...post,
+      createdAt: post.createdAt.toISOString(),
+      updatedAt: post.updatedAt.toISOString(),
+      comments: post.comments.map((comment) => ({
+        ...comment,
+        createdAt: comment.createdAt.toISOString(),
+        updatedAt: comment.updatedAt.toISOString(),
+      })),
+    }));
+
+    // Send response with posts and total pages
+    res.status(200).json({
+      posts: formattedPosts,
+      totalPages,
+    });
+  } catch (err) {
+    res.status(500).json({
+      message: "Error retrieving paginated posts",
+      error: err.message,
+    });
   }
 };
