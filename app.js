@@ -3,8 +3,8 @@ const app = express();
 const cors = require("cors"); // Import cors
 require("dotenv").config(); // Import dotenv
 app.use(express.json()); // Use express.json
-app.use(cors({ origin: "http://localhost:5173" }));
-// app.use(cors({ origin: "https://blogapi-teal.vercel.app" }));
+
+app.use(cors({ origin: "https://blogapi-teal.vercel.app" }));
 
 app.use("/uploads", express.static("uploads"));
 
