@@ -89,6 +89,8 @@ exports.getPostById = async (req, res) => {
       return res.status(400).json({ message: "Invalid post ID" });
     }
 
+    console.log("Fetching post with ID:", postId);
+
     const post = await prisma.post.findUnique({
       where: { id: postId },
       include: {
@@ -151,15 +153,22 @@ exports.updatePost = async (req, res) => {
   try {
     const post = await prisma.post.findUnique({
       where: { id: Number(id) },
+      select: {
+        authorId: true,
+      },
     });
+
     if (!post) {
       return res.status(404).json({ message: "Post not found" });
     }
-    if (post.authorid !== userId || req.user.role !== "ADMIN") {
+
+    if (post.authorId !== userId && req.user.role !== "ADMIN") {
+      console.log(post.authorId, userId, req.user.role);
       return res
         .status(401)
         .json({ message: "You are not authorized to update this post" });
     }
+
     const updatedPost = await prisma.post.update({
       where: { id: Number(id) },
       data: { title, content, published },
@@ -176,28 +185,46 @@ exports.updatePost = async (req, res) => {
 
 exports.deletePost = async (req, res) => {
   const { id } = req.params;
-  const { title, content, published } = req.body;
   const userId = req.user.id;
   try {
+    console.log("Attempting to delete post with ID:", id);
+
     const post = await prisma.post.findUnique({
       where: { id: Number(id) },
+      select: {
+        authorId: true,
+      },
     });
+
     if (!post) {
+      console.log("Post not found");
       return res.status(404).json({ message: "Post not found" });
     }
-    if (post.authorid !== userId || req.user.role !== "ADMIN") {
+
+    if (post.authorId !== userId && req.user.role !== "ADMIN") {
+      console.log(
+        "Unauthorized attempt to delete post:",
+        post.authorId,
+        userId,
+        req.user.role
+      );
       return res
         .status(401)
         .json({ message: "You are not authorized to delete this post" });
     }
+
     const deletedPost = await prisma.post.delete({
       where: { id: Number(id) },
     });
+    console.log("Post deleted successfully:", deletedPost);
     res
       .status(200)
       .json({ message: "Post deleted successfully", post: deletedPost });
   } catch (err) {
-    res.status(500).json({ message: "Error deleted post", error: err.message });
+    console.error("Error deleting post:", err);
+    res
+      .status(500)
+      .json({ message: "Error deleting post", error: err.message });
   }
 };
 
