@@ -1,5 +1,8 @@
+
 {
   "version": 2,
-  "builds": [{ "src": "app.js", "use": "@vercel/node" }],
+  "builds": [
+    { "src": "package.json", "use": "@vercel/static-build", "buildCommand": "npx prisma generate" }
+  ],
   "routes": [{ "src": "/(.*)", "dest": "app.js" }]
 }
