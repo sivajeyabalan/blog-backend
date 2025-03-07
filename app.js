@@ -4,7 +4,11 @@ const cors = require("cors"); // Import cors
 require("dotenv").config(); // Import dotenv
 app.use(express.json()); // Use express.json
 
-app.use(cors({ origin: "*" }));
+app.use(cors({
+  origin: 'http://localhost:5173', // Must be a specific origin, not '*'
+  credentials: true
+}));
+
 app.get("/favicon.ico", (req, res) => res.status(204).end());
 
 app.use("/uploads", express.static("uploads"));
