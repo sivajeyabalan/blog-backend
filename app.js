@@ -4,10 +4,7 @@ const cors = require("cors"); // Import cors
 require("dotenv").config(); // Import dotenv
 app.use(express.json()); // Use express.json
 
-app.use(cors({
-  origin: 'https://blogapi-sadl.onrender.com', // Must be a specific origin, not '*'
-  credentials: true
-}));
+app.use(cors());
 
 app.get("/favicon.ico", (req, res) => res.status(204).end());
 
