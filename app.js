@@ -5,7 +5,7 @@ require("dotenv").config(); // Import dotenv
 app.use(express.json()); // Use express.json
 
 app.use(cors({
-  origin: 'https://blogapi-bay.vercel.app/', // Must be a specific origin, not '*'
+  origin: 'https://blogapi-bay.vercel.app', // Must be a specific origin, not '*'
   credentials: true
 }));
 
