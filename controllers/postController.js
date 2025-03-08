@@ -184,47 +184,64 @@ exports.updatePost = async (req, res) => {
 };
 
 exports.deletePost = async (req, res) => {
-  const { id } = req.params;
-  const userId = req.user.id;
   try {
-    console.log("Attempting to delete post with ID:", id);
+    // Extract the ID from the request parameters
+    const { id } = req.params;
 
+    // Verify we have an ID
+    if (!id) {
+      return res.status(400).json({ message: "Post ID is required" });
+    }
+
+    // Convert ID to integer
+    const postId = parseInt(id, 10);
+
+    // Check if the conversion resulted in a valid number
+    if (isNaN(postId)) {
+      return res.status(400).json({ message: "Invalid post ID" });
+    }
+
+    const userId = req.user.id;
+
+    // Now use the properly converted ID in your Prisma query
     const post = await prisma.post.findUnique({
-      where: { id: Number(id) },
-      select: {
-        authorId: true,
-      },
+      where: { id: postId },
+      select: { authorId: true },
     });
 
     if (!post) {
-      console.log("Post not found");
       return res.status(404).json({ message: "Post not found" });
     }
 
     if (post.authorId !== userId && req.user.role !== "ADMIN") {
-      console.log(
-        "Unauthorized attempt to delete post:",
-        post.authorId,
-        userId,
-        req.user.role
-      );
       return res
         .status(401)
         .json({ message: "You are not authorized to delete this post" });
     }
 
-    const deletedPost = await prisma.post.delete({
-      where: { id: Number(id) },
+    // Delete related records first (if necessary)
+    await prisma.like.deleteMany({
+      where: { postId: postId },
     });
-    console.log("Post deleted successfully:", deletedPost);
-    res
-      .status(200)
-      .json({ message: "Post deleted successfully", post: deletedPost });
+
+    await prisma.comment.deleteMany({
+      where: { postId: postId },
+    });
+
+    const deletedPost = await prisma.post.delete({
+      where: { id: postId },
+    });
+
+    res.status(200).json({
+      message: "Post deleted successfully",
+      post: deletedPost,
+    });
   } catch (err) {
     console.error("Error deleting post:", err);
-    res
-      .status(500)
-      .json({ message: "Error deleting post", error: err.message });
+    res.status(500).json({
+      message: "Error deleting post",
+      error: err.message,
+    });
   }
 };
 
